@@ -7,7 +7,7 @@ export default function TabOneScreen() {
     <View style={styles.container}>
       <Stack.Screen 
         options={{ 
-          title: 'Home',
+          title: 'Chats',
         }} 
       />
     </View>
