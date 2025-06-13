@@ -1,0 +1,14 @@
+[debug] [2025-06-13T02:21:17.194Z] ----------------------------------------------------------------------
+[debug] [2025-06-13T02:21:17.196Z] Command:       /usr/local/bin/node /usr/local/bin/firebase login
+[debug] [2025-06-13T02:21:17.196Z] CLI Version:   14.7.0
+[debug] [2025-06-13T02:21:17.196Z] Platform:      darwin
+[debug] [2025-06-13T02:21:17.196Z] Node Version:  v20.14.0
+[debug] [2025-06-13T02:21:17.196Z] Time:          Thu Jun 12 2025 19:21:17 GMT-0700 (Pacific Daylight Time)
+[debug] [2025-06-13T02:21:17.196Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-06-13T02:21:17.197Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[info] i  Firebase CLI integrates with Gemini in Firebase API to provide assistant features. Learn more about using Gemini in Firebase and how we train our models: https://firebase.google.com/docs/gemini-in-firebase/set-up-gemini#required-permissions 
+[debug] [2025-06-13T02:21:17.524Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-06-13T02:21:17.525Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[info] 
+[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you. 
