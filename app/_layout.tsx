@@ -1,11 +1,13 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-import { View } from 'react-native';
+import { View, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React from 'react';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAuth, ClerkProvider, useSignUp } from '@clerk/clerk-expo';
@@ -51,8 +53,15 @@ function InitialLayout() {
   const router = useRouter();
   const segment = useSegments();
   const colorScheme = useColorScheme();
+  const [devAuthenticated, setDevAuthenticated] = React.useState(false);
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  // Check for dev auth flag
+  useEffect(() => {
+    AsyncStorage.getItem('dev_authenticated').then(val => {
+      setDevAuthenticated(val === 'true');
+    });
+  }, []);
+
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -64,15 +73,29 @@ function InitialLayout() {
   }, [loaded]);
 
   useEffect(() => {
-    if (!isLoaded) return; 
+    // Only run navigation logic after everything is loaded
+    if (!loaded || !isLoaded) return;
+    
     const inTabsGroup = segment[0] === '(tabs)';
+    const inAppGroup = segment[0] === '(app)';
+    const inVerification = segment.some(seg => seg === 'verify');
 
-    if (isSignedIn && !inTabsGroup) {
-      router.replace('/(tabs)/calls' as any);
-    } else if (!isSignedIn) {
-      router.replace('/');
+    // Don't redirect if in verification flow
+    if (inVerification) return;
+
+    // Only redirect to chats if signed in and trying to access root
+    if ((isSignedIn || devAuthenticated) && !inTabsGroup && !inAppGroup) {
+      setTimeout(() => {
+        router.replace('/(tabs)/chats' as any);
+      }, 0);
+    } 
+    // Redirect to welcome screen if not signed in and not in app group
+    else if (!isSignedIn && !devAuthenticated && !inAppGroup) {
+      setTimeout(() => {
+        router.replace('/(app)');
+      }, 0);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, isLoaded, loaded, segment, devAuthenticated]);
 
   if (!loaded || !isLoaded) {
     return <View />;
@@ -80,18 +103,24 @@ function InitialLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="otp" options={{ headerShown: true }} />
-      </Stack>
+      <Slot />
     </ThemeProvider>
   );
 }
 
 export default function RootLayout() {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    console.error('Missing Clerk Publishable Key');
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Missing Clerk Configuration</Text>
+      </View>
+    );
+  }
+
   return (
     <ClerkProvider 
-      publishableKey={CLERK_PUBLISHABLE_KEY!} 
+      publishableKey={CLERK_PUBLISHABLE_KEY} 
       tokenCache={tokenCache}
     >
       <InitialLayout />
