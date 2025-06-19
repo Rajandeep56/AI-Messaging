@@ -1,0 +1,39 @@
+{
+  "1": {
+    "id": "1",
+    "name": "John Doe",
+    "avatar": "https://i.pravatar.cc/150?img=1",
+    "online": true,
+    "messages": [
+      {
+        "id": "1",
+        "text": "Hey, how are you?",
+        "timestamp": "2024-03-20T10:00:00Z",
+        "sent": false,
+        "read": false
+      },
+      {
+        "id": "2",
+        "text": "I'm good, thanks! How about you?",
+        "timestamp": "2024-03-20T10:01:00Z",
+        "sent": true,
+        "read": true
+      }
+    ]
+  },
+  "2": {
+    "id": "2",
+    "name": "Alice Smith",
+    "avatar": "https://i.pravatar.cc/150?img=2",
+    "online": true,
+    "messages": [
+      {
+        "id": "1",
+        "text": "Did you see the new project requirements?",
+        "timestamp": "2024-03-20T09:30:00Z",
+        "sent": false,
+        "read": false
+      }
+    ]
+  }
+} 
