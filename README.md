@@ -1,7 +1,13 @@
 **Steps to Run**
 - git clone  https://github.com/Rajandeep56/AI-Messaging.git
-- npm i
+- cd AI-Messaging
+- npm install
+- npx expo start
+
 - npx npx expo run:ios
+- npx expo run:android
+
+
 
 
 
