@@ -44,13 +44,20 @@ jobs:
         curl -L -o app-release.aab "https://expo.dev/artifacts/eas/tda4pib5cJeEoAv4PG6JgX.aab"
         echo "✅ Downloaded existing build - no waiting for new build!"
         
-        # Also try to get the latest APK build as backup
+        # Also try to get the latest APK build as backup (only if EAS login worked)
         if command -v eas &> /dev/null; then
-          echo "Getting latest APK build as backup..."
-          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl') || echo "Could not get APK build URL"
-          if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ]; then
-            curl -L -o app-release.apk "$BUILD_URL"
-            echo "✅ Downloaded APK backup"
+          echo "Checking if EAS login worked..."
+          if eas whoami &> /dev/null; then
+            echo "EAS login successful, getting latest APK build..."
+            BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl') || echo "Could not get APK build URL"
+            if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "" ]; then
+              curl -L -o app-release.apk "$BUILD_URL"
+              echo "✅ Downloaded APK backup"
+            else
+              echo "No valid APK build URL found"
+            fi
+          else
+            echo "EAS login failed, skipping APK download"
           fi
         else
           echo "EAS CLI not available, using AAB only"
@@ -62,6 +69,9 @@ jobs:
         echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS="firebase-service-account.json"
         firebase use ai-msging
+        
+        # Test Firebase authentication
+        firebase projects:list || echo "Firebase authentication may have issues, but continuing..."
       env:
         FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
         
@@ -79,7 +89,15 @@ jobs:
           firebase appdistribution:distribute app-release.apk \
             --app 1:965784009156:android:de800004fd88a35b410c91 \
             --testers kaurdeep9073@gmail.com \
-            --release-notes "Chatter App v1.0.0 - Quick Deploy from GitHub Actions"
+            --release-notes "Chatter App v1.0.0 - Quick Deploy from GitHub Actions" || {
+            echo "APK deployment failed, trying AAB..."
+            if [ -f "app-release.aab" ]; then
+              firebase appdistribution:distribute app-release.aab \
+                --app 1:965784009156:android:de800004fd88a35b410c91 \
+                --testers kaurdeep9073@gmail.com \
+                --release-notes "Chatter App v1.0.0 - Quick Deploy from GitHub Actions"
+            fi
+          }
         elif [ -f "app-release.aab" ]; then
           echo "Deploying AAB file..."
           firebase appdistribution:distribute app-release.aab \
@@ -88,6 +106,8 @@ jobs:
             --release-notes "Chatter App v1.0.0 - Quick Deploy from GitHub Actions"
         else
           echo "❌ No build files found!"
+          echo "Available files:"
+          ls -la *.apk *.aab 2>/dev/null || echo "No APK or AAB files found"
           exit 1
         fi
       env:
