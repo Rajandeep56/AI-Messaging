@@ -24,43 +24,32 @@ jobs:
     - name: Install Firebase CLI
       run: npm install -g firebase-tools
       
-    - name: Setup EAS (Skip if token issues)
-      run: |
-        cd chatter
-        # Try to login with EXPO_TOKEN, but don't fail if it doesn't work
-        if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
-          echo "Attempting EAS login with token..."
-          echo ${{ secrets.EXPO_TOKEN }} | eas login || echo "EAS login failed, continuing without it"
-        else
-          echo "No EXPO_TOKEN found, skipping EAS login"
-        fi
-      env:
-        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    - name: Install EAS CLI
+      run: npm install -g eas-cli
       
     - name: Download Existing Build
       run: |
         cd chatter
         # Download the existing finished AAB build (saves 1 hour!)
         curl -L -o app-release.aab "https://expo.dev/artifacts/eas/tda4pib5cJeEoAv4PG6JgX.aab"
-        echo "✅ Downloaded existing build - no waiting for new build!"
+        echo "✅ Downloaded existing AAB build - no waiting for new build!"
         
-        # Also try to get the latest APK build as backup (only if EAS login worked)
-        if command -v eas &> /dev/null; then
-          echo "Checking if EAS login worked..."
-          if eas whoami &> /dev/null; then
-            echo "EAS login successful, getting latest APK build..."
-            BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl') || echo "Could not get APK build URL"
-            if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "" ]; then
-              curl -L -o app-release.apk "$BUILD_URL"
-              echo "✅ Downloaded APK backup"
-            else
-              echo "No valid APK build URL found"
-            fi
-          else
-            echo "EAS login failed, skipping APK download"
-          fi
+        # Try to get APK build only if we have a valid EXPO_TOKEN
+        if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+          echo "Attempting to get latest APK build..."
+          # Try EAS login and build list, but don't fail if it doesn't work
+          echo ${{ secrets.EXPO_TOKEN }} | eas login > /dev/null 2>&1 && {
+            echo "EAS login successful, getting latest APK..."
+            BUILD_URL=$(eas build:list --platform android --limit 1 --json 2>/dev/null | jq -r '.[0].artifacts.buildUrl' 2>/dev/null) && {
+              if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "" ]; then
+                curl -L -o app-release.apk "$BUILD_URL" && echo "✅ Downloaded APK backup"
+              else
+                echo "No valid APK build URL found"
+              fi
+            } || echo "Could not get APK build URL"
+          } || echo "EAS login failed, using AAB only"
         else
-          echo "EAS CLI not available, using AAB only"
+          echo "No EXPO_TOKEN, using AAB only"
         fi
         
     - name: Setup Firebase
@@ -70,8 +59,8 @@ jobs:
         export GOOGLE_APPLICATION_CREDENTIALS="firebase-service-account.json"
         firebase use ai-msging
         
-        # Test Firebase authentication
-        firebase projects:list || echo "Firebase authentication may have issues, but continuing..."
+        # Test Firebase authentication (don't fail if it has issues)
+        firebase projects:list > /dev/null 2>&1 || echo "Firebase authentication may have issues, but continuing with deployment..."
       env:
         FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
         
