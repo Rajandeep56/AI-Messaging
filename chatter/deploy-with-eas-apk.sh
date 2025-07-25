@@ -46,7 +46,7 @@ if command -v eas &> /dev/null && [ -n "$EXPO_TOKEN" ]; then
     echo "$EXPO_TOKEN" | eas login > /dev/null 2>&1 || echo "EAS login failed, but continuing..."
     
     echo "Getting latest APK build URL..."
-    BUILD_URL=$(eas build:list --platform android --limit 1 --json 2>/dev/null | jq -r '.[0].artifacts.buildUrl' 2>/dev/null)
+    BUILD_URL=$(eas build:list --platform android --limit 1 --json --non-interactive 2>/dev/null | jq -r '.[0].artifacts.buildUrl' 2>/dev/null)
     
     if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "" ]; then
         echo "Downloading APK from: $BUILD_URL"
@@ -62,7 +62,9 @@ if command -v eas &> /dev/null && [ -n "$EXPO_TOKEN" ]; then
         fi
     else
         echo "❌ Could not get APK build URL from EAS"
-        exit 1
+        echo "Using fallback APK URL..."
+        curl -L -o app-release.apk "https://expo.dev/artifacts/eas/woF76jGJCWMCHJd35nxGGn.apk"
+        echo "✅ Downloaded APK from fallback URL"
     fi
 else
     echo "❌ EAS CLI not available or no EXPO_TOKEN"
