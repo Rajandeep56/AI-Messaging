@@ -8,9 +8,13 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
-    "build:android": "eas build --platform android",
-    "build:ios": "eas build --platform ios",
-    "deploy:web": "npm run build:web",
+    "build:android": "expo run:android --variant release",
+    "build:android:firebase": "./build-android.sh",
+    "deploy:web": "npm run build:web && firebase deploy --only hosting",
+    "deploy:android:firebase": "./deploy-firebase-free.sh",
+    "firebase:init": "firebase init",
+    "firebase:deploy": "firebase deploy",
+    "firebase:distribute": "firebase appdistribution:distribute",
     "test": "echo 'Tests disabled for deployment'",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "type-check": "tsc --noEmit"
@@ -39,7 +43,10 @@
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "react-native-web": "~0.20.0"
+    "react-native-web": "~0.20.0",
+    "@react-native-firebase/app": "^19.0.0",
+    "@react-native-firebase/analytics": "^19.0.0",
+    "@react-native-firebase/crashlytics": "^19.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

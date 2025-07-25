@@ -1,0 +1,11 @@
+{
+  "app": "ai-msging",
+  "groups": "testers",
+  "release_notes": "Chatter app release",
+  "release_notes_file": "release_notes.txt",
+  "testers_file": "testers.txt",
+  "android": {
+    "release_channel": "production",
+    "build_output": "android/app/build/outputs/apk/release/app-release.apk"
+  }
+} 

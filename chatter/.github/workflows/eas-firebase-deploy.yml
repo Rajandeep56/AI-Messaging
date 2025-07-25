@@ -1,0 +1,83 @@
+name: EAS Build and Firebase Deploy
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install EAS CLI
+      run: npm install -g eas-cli
+      
+    - name: Install Firebase CLI
+      run: npm install -g firebase-tools
+      
+    - name: Login to Expo
+      run: |
+        echo ${{ secrets.EXPO_TOKEN }} | eas login --non-interactive
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        
+    - name: Build Android APK with EAS
+      run: |
+        eas build --platform android --profile preview --non-interactive --wait
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        
+    - name: Download APK
+      run: |
+        # Get the latest build URL
+        BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
+        wget -O app-release.apk "$BUILD_URL"
+        
+    - name: Login to Firebase
+      run: |
+        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > firebase-service-account.json
+        firebase auth:ci-token --project ai-msging --token-file firebase-token.json
+      env:
+        FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        
+    - name: Deploy to Firebase App Distribution
+      run: |
+        firebase appdistribution:distribute app-release.apk \
+          --app 1:965784009156:android:de800004fd88a35b410c91 \
+          --groups testers \
+          --release-notes-file release_notes.txt \
+          --token-file firebase-token.json
+      env:
+        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        
+    - name: Deploy web version
+      run: |
+        npm run build:web
+        firebase deploy --only hosting --token-file firebase-token.json
+        
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '🚀 **Deployment Complete!**\n\n✅ Android APK built with EAS and deployed to Firebase App Distribution\n✅ Web version deployed to Firebase Hosting\n\n📱 **Testers will receive email invitations**\n📊 **Monitor at**: https://console.firebase.google.com/project/ai-msging/appdistribution'
+          }) 

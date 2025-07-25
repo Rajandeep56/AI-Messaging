@@ -1,0 +1,16 @@
+Chatter App v1.0.0
+
+🚀 New Features:
+- Real-time messaging
+- Voice and video calls
+- User authentication
+- Profile management
+- Message encryption
+
+🐛 Bug Fixes:
+- Fixed message delivery issues
+- Improved app performance
+- Enhanced UI/UX
+
+📱 Platform: Android
+🔧 Built with: React Native + Expo + Firebase 
