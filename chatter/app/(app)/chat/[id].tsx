@@ -518,10 +518,16 @@ export default function ChatScreen() {
               >
                 <Ionicons name="help-circle-outline" size={24} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerButton}>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => router.push(`/call/${id}?mode=video`)}
+              >
                 <Ionicons name="videocam-outline" size={24} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerButton}>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => router.push(`/call/${id}?mode=voice`)}
+              >
                 <Ionicons name="call-outline" size={22} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.headerButton}>

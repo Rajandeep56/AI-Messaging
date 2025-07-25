@@ -1,34 +1,8 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, Image, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, Text, Image, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-
-// Sample call data
-const sampleCalls = [
-  {
-    id: '1',
-    contactName: 'Alice',
-    avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
-    type: 'incoming', // 'outgoing', 'missed'
-    callMode: 'voice', // 'video'
-    time: '2024-07-11T10:30:00Z',
-  },
-  {
-    id: '2',
-    contactName: 'Bob',
-    avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
-    type: 'missed',
-    callMode: 'video',
-    time: '2024-07-10T15:45:00Z',
-  },
-  {
-    id: '3',
-    contactName: 'Carol',
-    avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
-    type: 'outgoing',
-    callMode: 'voice',
-    time: '2024-07-09T09:20:00Z',
-  },
-];
+import { useRouter } from 'expo-router';
+import CallManager, { Call } from '@/utils/callManager';
 
 function formatTimestamp(timestamp: string) {
   const date = new Date(timestamp);
@@ -57,24 +31,66 @@ const getCallIcon = (type: string, callMode: string) => {
 };
 
 export default function CallsTab() {
-  const [calls] = useState(sampleCalls);
+  const router = useRouter();
+  const [calls, setCalls] = useState<Call[]>([]);
+  const [loading, setLoading] = useState(true);
+  const callManager = CallManager.getInstance();
 
-  const renderCallItem = ({ item }: { item: typeof sampleCalls[0] }) => (
+  useEffect(() => {
+    loadCalls();
+  }, []);
+
+  const loadCalls = async () => {
+    try {
+      setLoading(true);
+      await callManager.initialize();
+      const allCalls = await callManager.getAllCalls();
+      const callsArray = Object.values(allCalls).sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      setCalls(callsArray);
+    } catch (error) {
+      console.error('Failed to load calls:', error);
+      Alert.alert('Error', 'Failed to load call history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCallPress = (call: Call, mode: 'voice' | 'video') => {
+    router.push(`/call/${call.contactId}?mode=${mode}`);
+  };
+
+  const renderCallItem = ({ item }: { item: Call }) => (
     <TouchableOpacity style={styles.callItem}>
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <Image source={{ uri: item.contactAvatar }} style={styles.avatar} />
       <View style={styles.callInfo}>
         <View style={styles.callHeader}>
           <Text style={styles.contactName}>{item.contactName}</Text>
-          <Text style={styles.timestamp}>{formatTimestamp(item.time)}</Text>
+          <Text style={styles.timestamp}>{formatTimestamp(item.timestamp)}</Text>
         </View>
         <View style={styles.callDetails}>
           {getCallIcon(item.type, item.callMode)}
           <Text style={styles.callType}>{item.type.charAt(0).toUpperCase() + item.type.slice(1)}</Text>
+          {item.duration && (
+            <Text style={styles.duration}> • {Math.floor(item.duration / 60)}:{(item.duration % 60).toString().padStart(2, '0')}</Text>
+          )}
         </View>
       </View>
-      <TouchableOpacity>
-        <Ionicons name={item.callMode === 'video' ? 'videocam' : 'call'} size={24} color="#075e54" />
-      </TouchableOpacity>
+      <View style={styles.callActions}>
+        <TouchableOpacity 
+          style={styles.callButton}
+          onPress={() => handleCallPress(item, 'voice')}
+        >
+          <Ionicons name="call" size={24} color="#075e54" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.callButton}
+          onPress={() => handleCallPress(item, 'video')}
+        >
+          <Ionicons name="videocam" size={24} color="#075e54" />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -141,5 +157,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginLeft: 8,
+  },
+  duration: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+  },
+  callActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  callButton: {
+    padding: 8,
   },
 });
