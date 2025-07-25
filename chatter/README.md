@@ -106,3 +106,4 @@ npm run deploy:web     # Deploy to web platforms
 
 # Test deployment
 # Test deployment fix
+# Test EAS login fix
