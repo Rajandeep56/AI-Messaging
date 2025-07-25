@@ -21,15 +21,30 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Install Firebase CLI
-      run: npm install -g firebase-tools
+    - name: Install Firebase CLI and EAS CLI
+      run: |
+        npm install -g firebase-tools
+        npm install -g eas-cli
       
-    - name: Run Manual Deployment Script
+    - name: Setup EAS Login
       run: |
         cd chatter
-        ./deploy-manual-method.sh
+        if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+          echo "Logging into EAS..."
+          echo ${{ secrets.EXPO_TOKEN }} | eas login
+        else
+          echo "No EXPO_TOKEN found, skipping EAS login"
+        fi
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      
+    - name: Deploy APK to Firebase App Distribution
+      run: |
+        cd chatter
+        ./deploy-apk-method.sh
       env:
         FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
     - name: Deploy Web Version
       run: |
@@ -42,8 +57,9 @@ jobs:
         
     - name: Success Message
       run: |
-        echo "🎉 Ultra simple deployment completed!"
-        echo "📱 Android app deployed to Firebase App Distribution"
+        echo "🎉 APK Deployment Completed Successfully!"
+        echo "📱 Android APK deployed to Firebase App Distribution"
         echo "🌐 Web version deployed to Firebase Hosting"
         echo "⏱️  Total time: ~2 minutes"
-        echo "📧 Testers will receive email invitations" 
+        echo "📧 Testers will receive email invitations"
+        echo "🆓 Free Firebase App Distribution - No Google Play Store required!" 

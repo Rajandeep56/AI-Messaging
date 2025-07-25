@@ -1,34 +1,10 @@
 #!/bin/bash
 
-echo "🚀 Manual Deployment Method - Replicating Successful Deployment"
+echo "🚀 Working Deployment Method - Using Exact Success Method"
 echo ""
 
-# Step 1: Download the existing APK build (this method worked!)
-echo "📥 Step 1: Downloading existing APK build..."
-cd chatter
-
-# Try to get APK build URL from EAS (if available)
-if command -v eas &> /dev/null && [ -n "$EXPO_TOKEN" ]; then
-    echo "Getting latest APK build URL from EAS..."
-    BUILD_URL=$(eas build:list --platform android --limit 1 --json 2>/dev/null | jq -r '.[0].artifacts.buildUrl' 2>/dev/null)
-    if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ]; then
-        curl -L -o app-release.apk "$BUILD_URL"
-        echo "✅ Downloaded existing APK build from EAS"
-    else
-        echo "Could not get APK from EAS, using fallback method..."
-        # Fallback: Use a direct download method or show instructions
-        echo "Please ensure you have a recent APK build available"
-        exit 1
-    fi
-else
-    echo "EAS CLI not available or no EXPO_TOKEN, using fallback method..."
-    echo "Please ensure you have a recent APK build available"
-    exit 1
-fi
-
-# Step 2: Setup Firebase service account
-echo ""
-echo "🔧 Step 2: Setting up Firebase authentication..."
+# Step 1: Setup Firebase service account
+echo "🔧 Step 1: Setting up Firebase authentication..."
 
 # Check if the secret is available
 if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
@@ -57,19 +33,42 @@ else
     exit 1
 fi
 
-# Step 3: Add tester
+# Step 2: Add tester
 echo ""
-echo "👥 Step 3: Adding tester..."
+echo "👥 Step 2: Adding tester..."
 firebase appdistribution:testers:add kaurdeep9073@gmail.com || echo "Tester already exists"
 echo "✅ Tester added"
 
-# Step 4: Deploy to Firebase App Distribution
+# Step 3: Get latest APK build (this is the method that worked!)
+echo ""
+echo "📥 Step 3: Getting latest APK build..."
+if command -v eas &> /dev/null && [ -n "$EXPO_TOKEN" ]; then
+    echo "Logging into EAS..."
+    echo "$EXPO_TOKEN" | eas login > /dev/null 2>&1
+    
+    echo "Getting latest APK build URL..."
+    BUILD_URL=$(eas build:list --platform android --limit 1 --json 2>/dev/null | jq -r '.[0].artifacts.buildUrl' 2>/dev/null)
+    
+    if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "" ]; then
+        curl -L -o app-release.apk "$BUILD_URL"
+        echo "✅ Downloaded APK build"
+    else
+        echo "❌ Could not get APK build URL"
+        exit 1
+    fi
+else
+    echo "❌ EAS CLI not available or no EXPO_TOKEN"
+    echo "Please ensure EXPO_TOKEN secret is set in GitHub"
+    exit 1
+fi
+
+# Step 4: Deploy to Firebase App Distribution (this method worked!)
 echo ""
 echo "🚀 Step 4: Deploying to Firebase App Distribution..."
 firebase appdistribution:distribute app-release.apk \
   --app 1:965784009156:android:de800004fd88a35b410c91 \
   --testers kaurdeep9073@gmail.com \
-  --release-notes "Chatter App v1.0.0 - Manual Method Deploy"
+  --release-notes "Chatter App v1.0.0 - Working Method Deploy"
 
 if [ $? -eq 0 ]; then
     echo ""
