@@ -152,6 +152,180 @@ class ChatManager {
     await this.saveChats(updatedChats);
     return newChat;
   }
+
+  // Get conversation context for better suggestions
+  getConversationContext(chatId: string): {
+    lastMessage: string;
+    recentMessages: string[];
+    conversationTone: 'formal' | 'casual' | 'professional' | 'friendly';
+    commonTopics: string[];
+  } {
+    const chat = this.chats[chatId];
+    if (!chat || chat.messages.length === 0) {
+      return {
+        lastMessage: '',
+        recentMessages: [],
+        conversationTone: 'casual',
+        commonTopics: []
+      };
+    }
+
+    const recentMessages = chat.messages.slice(-5).map(msg => msg.text);
+    const lastMessage = recentMessages[recentMessages.length - 1] || '';
+    
+    // Analyze conversation tone
+    const allText = recentMessages.join(' ').toLowerCase();
+    let tone: 'formal' | 'casual' | 'professional' | 'friendly' = 'casual';
+    
+    if (allText.includes('meeting') || allText.includes('project') || allText.includes('deadline')) {
+      tone = 'professional';
+    } else if (allText.includes('thanks') || allText.includes('appreciate') || allText.includes('help')) {
+      tone = 'friendly';
+    } else if (allText.includes('emails') || allText.includes('document') || allText.includes('report')) {
+      tone = 'formal';
+    }
+
+    // Extract common topics
+    const topics = [];
+    if (allText.includes('work') || allText.includes('project')) topics.push('work');
+    if (allText.includes('meeting') || allText.includes('call')) topics.push('meetings');
+    if (allText.includes('thanks') || allText.includes('appreciate')) topics.push('gratitude');
+    if (allText.includes('hello') || allText.includes('hi')) topics.push('greetings');
+    if (allText.includes('how are you') || allText.includes('doing')) topics.push('wellbeing');
+
+    return {
+      lastMessage,
+      recentMessages,
+      conversationTone: tone,
+      commonTopics: topics
+    };
+  }
+
+  // Get personalized response suggestions based on context
+  getResponseSuggestions(chatId: string, chatName: string): string[] {
+    const context = this.getConversationContext(chatId);
+    const { lastMessage, conversationTone, commonTopics } = context;
+    
+    const lowerMessage = lastMessage.toLowerCase();
+    
+    // Professional tone suggestions
+    if (conversationTone === 'professional') {
+      if (lowerMessage.includes('meeting') || lowerMessage.includes('call')) {
+        return [
+          'I\'ll be there',
+          'What time works for you?',
+          'I\'ll prepare the agenda',
+          'Looking forward to it'
+        ];
+      }
+      if (lowerMessage.includes('project') || lowerMessage.includes('deadline')) {
+        return [
+          'I\'ll get it done',
+          'On track for the deadline',
+          'I\'ll update you soon',
+          'Understood, will proceed'
+        ];
+      }
+      return [
+        'Understood',
+        'I\'ll look into it',
+        'Thanks for the update',
+        'Will do'
+      ];
+    }
+    
+    // Friendly tone suggestions
+    if (conversationTone === 'friendly') {
+      if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
+        return [
+          'You\'re welcome! 😊',
+          'Anytime!',
+          'Happy to help!',
+          'No problem at all!'
+        ];
+      }
+      if (lowerMessage.includes('how are you') || lowerMessage.includes('doing')) {
+        return [
+          'I\'m doing great, thanks! How about you?',
+          'Pretty good! 😊',
+          'All good here!',
+          'Doing well, thanks for asking!'
+        ];
+      }
+      return [
+        'Sounds good! 👍',
+        'Perfect!',
+        'Awesome! 😊',
+        'Great!'
+      ];
+    }
+    
+    // Formal tone suggestions
+    if (conversationTone === 'formal') {
+      return [
+        'I understand',
+        'I\'ll review and respond',
+        'Thank you for the information',
+        'I\'ll follow up accordingly'
+      ];
+    }
+    
+    // Default casual suggestions
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+      return [
+        `Hi ${chatName}! 👋`,
+        'Hello! How are you?',
+        'Hey there! 😊',
+        'Hi! Nice to hear from you'
+      ];
+    }
+    
+    if (lowerMessage.includes('how are you') || lowerMessage.includes('how\'s it going')) {
+      return [
+        'I\'m doing great, thanks! How about you?',
+        'Pretty good! 😊',
+        'All good here!',
+        'Doing well, thanks for asking!'
+      ];
+    }
+    
+    if (lowerMessage.includes('project') || lowerMessage.includes('work') || lowerMessage.includes('meeting')) {
+      return [
+        'Sounds good! 👍',
+        'I\'ll look into it',
+        'Thanks for the update',
+        'Got it, will do!'
+      ];
+    }
+    
+    if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
+      return [
+        'You\'re welcome! 😊',
+        'Anytime!',
+        'Happy to help!',
+        'No problem at all!'
+      ];
+    }
+    
+    if (lowerMessage.includes('okay') || lowerMessage.includes('ok') || lowerMessage.includes('sure')) {
+      return [
+        'Perfect! 👍',
+        'Great!',
+        'Sounds good!',
+        'Awesome! 😊'
+      ];
+    }
+    
+    // Default suggestions
+    return [
+      'Got it! 👍',
+      'Thanks for letting me know',
+      'I\'ll get back to you soon',
+      'Sounds good!',
+      'Perfect, thanks!',
+      'Sure thing! 😊'
+    ];
+  }
 }
 
 export default ChatManager; 

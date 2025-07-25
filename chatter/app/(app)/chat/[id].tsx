@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  ActivityIndicator
+  ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -161,6 +162,71 @@ interface Chat {
   messages: Message[];
 }
 
+// Response suggestions based on context
+const getResponseSuggestions = (lastMessage: string, chatName: string): string[] => {
+  const lowerMessage = lastMessage.toLowerCase();
+  
+  // Greeting responses
+  if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+    return [
+      `Hi ${chatName}! 👋`,
+      'Hello! How are you?',
+      'Hey there! 😊',
+      'Hi! Nice to hear from you'
+    ];
+  }
+  
+  // Question responses
+  if (lowerMessage.includes('how are you') || lowerMessage.includes('how\'s it going')) {
+    return [
+      'I\'m doing great, thanks! How about you?',
+      'Pretty good! 😊',
+      'All good here!',
+      'Doing well, thanks for asking!'
+    ];
+  }
+  
+  // Work/Project related
+  if (lowerMessage.includes('project') || lowerMessage.includes('work') || lowerMessage.includes('meeting')) {
+    return [
+      'Sounds good! 👍',
+      'I\'ll look into it',
+      'Thanks for the update',
+      'Got it, will do!'
+    ];
+  }
+  
+  // Thank you responses
+  if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
+    return [
+      'You\'re welcome! 😊',
+      'Anytime!',
+      'Happy to help!',
+      'No problem at all!'
+    ];
+  }
+  
+  // General responses
+  if (lowerMessage.includes('okay') || lowerMessage.includes('ok') || lowerMessage.includes('sure')) {
+    return [
+      'Perfect! 👍',
+      'Great!',
+      'Sounds good!',
+      'Awesome! 😊'
+    ];
+  }
+  
+  // Default suggestions
+  return [
+    'Got it! 👍',
+    'Thanks for letting me know',
+    'I\'ll get back to you soon',
+    'Sounds good!',
+    'Perfect, thanks!',
+    'Sure thing! 😊'
+  ];
+};
+
 function formatMessageTime(timestamp: string) {
   const date = new Date(timestamp);
   return date.toLocaleTimeString('en-US', {
@@ -176,6 +242,7 @@ export default function ChatScreen() {
   const [message, setMessage] = useState('');
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const chatManager = ChatManager.getInstance();
 
@@ -193,6 +260,26 @@ export default function ChatScreen() {
         const unreadMessages = loadedChat.messages.filter(msg => !msg.sent && !msg.read);
         for (const msg of unreadMessages) {
           await chatManager.markMessageAsRead(loadedChat.id, msg.id);
+        }
+        
+        // Show suggestions if there are any unread messages from the other person
+        const hasUnreadMessages = loadedChat.messages.some(msg => !msg.sent && !msg.read);
+        const lastMessage = loadedChat.messages[loadedChat.messages.length - 1];
+        const hasReceivedMessages = loadedChat.messages.some(msg => !msg.sent);
+        
+        // Show suggestions if:
+        // 1. There are unread messages from others, OR
+        // 2. The last message is from the other person (even if read), OR
+        // 3. There are any received messages (fallback)
+        if (hasUnreadMessages || (lastMessage && !lastMessage.sent) || hasReceivedMessages) {
+          setShowSuggestions(true);
+          console.log('Showing suggestions for chat:', loadedChat.name);
+          console.log('Last message:', lastMessage?.text, 'sent:', lastMessage?.sent);
+          console.log('Has unread messages:', hasUnreadMessages);
+          console.log('Has received messages:', hasReceivedMessages);
+        } else {
+          setShowSuggestions(false);
+          console.log('Hiding suggestions for chat:', loadedChat.name);
         }
       }
     } catch (error) {
@@ -232,6 +319,7 @@ export default function ChatScreen() {
       // Clear input and dismiss keyboard
       setMessage('');
       Keyboard.dismiss();
+      setShowSuggestions(false);
 
       // Reload chat to get updated messages
       loadChat();
@@ -262,6 +350,123 @@ export default function ChatScreen() {
     } catch (error) {
       console.error('Failed to send message:', error);
     }
+  };
+
+  const sendSuggestion = async (suggestion: string) => {
+    if (!currentChat) return;
+    
+    try {
+      await chatManager.addMessage(currentChat.id, {
+        text: suggestion,
+        timestamp: new Date().toISOString(),
+        sent: true,
+        read: true,
+      });
+      
+      setShowSuggestions(false);
+      loadChat();
+
+      // Simulate received message after 1-2 seconds
+      if (Math.random() > 0.5) {
+        setTimeout(async () => {
+          const replies = [
+            "Got it! 👍",
+            "Thanks for letting me know",
+            "Okay, sounds good!",
+            "I'll get back to you soon",
+            "Perfect, thanks!",
+            "Sure thing! 😊",
+          ];
+          
+          await chatManager.addMessage(currentChat.id, {
+            text: replies[Math.floor(Math.random() * replies.length)],
+            timestamp: new Date().toISOString(),
+            sent: false,
+            read: false,
+          });
+
+          loadChat();
+        }, 1000 + Math.random() * 1000);
+      }
+    } catch (error) {
+      console.error('Failed to send suggestion:', error);
+    }
+  };
+
+  const renderSuggestions = () => {
+    console.log('renderSuggestions called:', { showSuggestions, currentChat: !!currentChat, messagesLength: currentChat?.messages?.length });
+    
+    if (!showSuggestions || !currentChat || currentChat.messages.length === 0) {
+      console.log('Early return from renderSuggestions');
+      return null;
+    }
+
+    const lastMessage = currentChat.messages[currentChat.messages.length - 1];
+    console.log('Last message in renderSuggestions:', lastMessage?.text, 'sent:', lastMessage?.sent);
+    
+    // For debugging: show suggestions even if last message is from user
+    if (lastMessage.sent && !showSuggestions) {
+      console.log('Last message is sent by user, but suggestions are forced to show');
+    }
+    
+    if (lastMessage.sent && !showSuggestions) {
+      console.log('Last message is sent by user, hiding suggestions');
+      return null;
+    }
+
+    // Use ChatManager's improved suggestion system
+    const suggestions = chatManager.getResponseSuggestions(currentChat.id, currentChat.name);
+    const context = chatManager.getConversationContext(currentChat.id);
+    
+    console.log('Generated suggestions:', suggestions);
+    console.log('Context:', context);
+    
+    // Fallback suggestions if none are generated
+    const finalSuggestions = suggestions.length > 0 ? suggestions : [
+      'Got it! 👍',
+      'Thanks for letting me know',
+      'I\'ll get back to you soon',
+      'Sounds good!'
+    ];
+
+    return (
+      <View style={styles.suggestionsContainer}>
+        <View style={styles.suggestionsHeader}>
+          <Text style={styles.suggestionsTitle}>Quick replies</Text>
+          <View style={styles.suggestionsActions}>
+            <View style={styles.toneIndicator}>
+              <Text style={styles.toneText}>{context.conversationTone}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.dismissButton}
+              onPress={() => setShowSuggestions(false)}
+            >
+              <Ionicons name="close" size={16} color="#666" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.suggestionsScroll}
+        >
+          {finalSuggestions.map((suggestion, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.suggestionButton,
+                context.conversationTone === 'professional' && styles.professionalSuggestion,
+                context.conversationTone === 'friendly' && styles.friendlySuggestion,
+                context.conversationTone === 'formal' && styles.formalSuggestion,
+              ]}
+              onPress={() => sendSuggestion(suggestion)}
+            >
+              <Text style={styles.suggestionText}>{suggestion}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
   };
 
   if (loading) {
@@ -300,10 +505,19 @@ export default function ChatScreen() {
               <Ionicons name="chevron-back" size={24} color="#fff" />
             </TouchableOpacity>
           ),
-          title: currentChat.name,
+          title: currentChat?.name,
           headerTitleStyle: styles.headerTitle,
           headerRight: () => (
             <View style={styles.headerRight}>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => {
+                  console.log('Debug: Forcing suggestions to show');
+                  setShowSuggestions(true);
+                }}
+              >
+                <Ionicons name="help-circle-outline" size={24} color="#fff" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.headerButton}>
                 <Ionicons name="videocam-outline" size={24} color="#fff" />
               </TouchableOpacity>
@@ -321,7 +535,7 @@ export default function ChatScreen() {
 
       <FlatList
         ref={flatListRef}
-        data={currentChat.messages}
+        data={currentChat?.messages || []}
         renderItem={renderMessage}
         keyExtractor={item => item.id}
         style={styles.messageList}
@@ -330,6 +544,8 @@ export default function ChatScreen() {
         onLayout={() => flatListRef.current?.scrollToEnd()}
         showsVerticalScrollIndicator={false}
       />
+
+      {renderSuggestions()}
 
       <View style={styles.inputContainer}>
         <TouchableOpacity style={styles.attachButton}>
@@ -437,6 +653,72 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 8,
     bottom: 8,
+  },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    paddingVertical: 8,
+  },
+  suggestionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+  },
+  suggestionsActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dismissButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  suggestionsTitle: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  toneIndicator: {
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  toneText: {
+    fontSize: 10,
+    color: '#2E7D32',
+    textTransform: 'capitalize',
+    fontWeight: '500',
+  },
+  suggestionsScroll: {
+    paddingHorizontal: 10,
+  },
+  suggestionButton: {
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  professionalSuggestion: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#2196F3',
+  },
+  friendlySuggestion: {
+    backgroundColor: '#F3E5F5',
+    borderColor: '#9C27B0',
+  },
+  formalSuggestion: {
+    backgroundColor: '#FFF3E0',
+    borderColor: '#FF9800',
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
   },
   inputContainer: {
     flexDirection: 'row',

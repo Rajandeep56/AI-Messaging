@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "965784009156",
+    "project_id": "ai-msging",
+    "storage_bucket": "ai-msging.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965784009156:android:de800004fd88a35b410c91",
+        "android_client_info": {
+          "package_name": "com.anonymous.chatter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRRVZBA4Fw2PY-a99Qn0MCOOVzuBxbzIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
