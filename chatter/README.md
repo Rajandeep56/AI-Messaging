@@ -104,3 +104,4 @@ npm run build:ios      # Build for iOS
 npm run deploy:web     # Deploy to web platforms
 ```
 
+# Test deployment

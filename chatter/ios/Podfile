@@ -33,6 +33,13 @@ target 'chatter' do
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+  
+  # Fix for Firebase Swift pods
+  use_modular_headers!
+  
+  # Fix for React Native 0.79.3 module conflicts
+  pod 'React-RuntimeHermes', :modular_headers => true
+  pod 'React-jsitooling', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],
