@@ -12,10 +12,33 @@ echo "✅ Downloaded existing AAB build"
 # Step 2: Setup Firebase service account
 echo ""
 echo "🔧 Step 2: Setting up Firebase authentication..."
-echo '$FIREBASE_SERVICE_ACCOUNT_KEY' > firebase-service-account.json
+
+# Check if the secret is available
+if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+    echo "❌ FIREBASE_SERVICE_ACCOUNT_KEY is not set"
+    echo "Please add this secret to your GitHub repository:"
+    echo "Repository Settings → Secrets and variables → Actions → New repository secret"
+    echo "Name: FIREBASE_SERVICE_ACCOUNT_KEY"
+    echo "Value: [Your Firebase service account JSON]"
+    exit 1
+fi
+
+# Create service account file
+echo "$FIREBASE_SERVICE_ACCOUNT_KEY" > firebase-service-account.json
 export GOOGLE_APPLICATION_CREDENTIALS="firebase-service-account.json"
 firebase use ai-msging
-echo "✅ Firebase setup complete"
+
+# Test Firebase authentication
+echo "Testing Firebase authentication..."
+firebase projects:list > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    echo "✅ Firebase authentication successful"
+else
+    echo "❌ Firebase authentication failed"
+    echo "Please check your FIREBASE_SERVICE_ACCOUNT_KEY secret"
+    echo "The service account JSON should be valid and have proper permissions"
+    exit 1
+fi
 
 # Step 3: Add tester
 echo ""
