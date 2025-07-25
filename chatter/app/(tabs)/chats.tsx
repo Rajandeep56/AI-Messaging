@@ -3,13 +3,13 @@ import { View, StyleSheet, FlatList, Text, Image, TouchableOpacity } from 'react
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import ChatManager from '@/utils/chatManager';
+import chatService from '@/services/chatService';
 
 // Define types for our chat data
 interface Message {
   id: string;
   text: string;
-  timestamp: string;
+  timestamp: Date;
   sent: boolean;
   read: boolean;
 }
@@ -20,29 +20,39 @@ interface Chat {
   avatar: string;
   online: boolean;
   messages: Message[];
+  participants: string[];
+  lastMessage?: Message;
+  unreadCount: number;
+  isAIChat?: boolean;
 }
 
-interface ChatListItem extends Chat {
+interface ChatListItem {
+  id: string;
+  name: string;
+  avatar: string;
+  online: boolean;
+  messages: Message[];
+  participants: string[];
   lastMessage: string;
   timestamp: string;
   unreadCount: number;
+  isAIChat?: boolean;
 }
 
-function formatTimestamp(timestamp: string) {
-  const date = new Date(timestamp);
+function formatTimestamp(timestamp: Date) {
   const now = new Date();
-  const diff = now.getTime() - date.getTime();
+  const diff = now.getTime() - timestamp.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   
   if (days > 7) {
     // Show date for messages older than a week
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   } else if (days > 0) {
     // Show day of week for messages within a week
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return timestamp.toLocaleDateString('en-US', { weekday: 'short' });
   } else {
     // Show time for messages from today
-    return date.toLocaleTimeString('en-US', { 
+    return timestamp.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true 
@@ -54,14 +64,21 @@ export default function ChatsScreen() {
   const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
-  const chatManager = ChatManager.getInstance();
 
   const loadChats = async () => {
     try {
-      const allChats = await chatManager.getAllChats();
-      setChats(Object.values(allChats));
+      console.log('Loading chats...');
+      const firebaseChats = await chatService.getChats();
+      console.log('Loaded chats:', firebaseChats.length, 'chats');
+      
+      if (firebaseChats.length === 0) {
+        console.log('No chats found, this might be normal for new users');
+      }
+      
+      setChats(firebaseChats);
     } catch (error) {
-      console.error('Failed to load chats:', error);
+      console.error('Failed to load chats from Firebase:', error);
+      setChats([]);
     } finally {
       setLoading(false);
     }
@@ -82,9 +99,9 @@ export default function ChatsScreen() {
   // Convert chats to chat list items with computed properties
   const chatListItems: ChatListItem[] = chats.map(chat => ({
     ...chat,
-    lastMessage: chat.messages[chat.messages.length - 1]?.text || '',
-    timestamp: chat.messages[chat.messages.length - 1]?.timestamp || new Date().toISOString(),
-    unreadCount: chat.messages.filter(m => !m.sent && !m.read).length,
+    lastMessage: chat.lastMessage?.text || chat.messages[chat.messages.length - 1]?.text || '',
+    timestamp: chat.lastMessage?.timestamp?.toISOString() || chat.messages[chat.messages.length - 1]?.timestamp?.toISOString() || new Date().toISOString(),
+    unreadCount: chat.unreadCount || chat.messages.filter(m => !m.sent && !m.read).length,
   }));
 
   const renderChatItem = ({ item }: { item: ChatListItem }) => (
@@ -102,7 +119,7 @@ export default function ChatsScreen() {
       <View style={styles.chatInfo}>
         <View style={styles.chatHeader}>
           <Text style={styles.chatName}>{item.name}</Text>
-          <Text style={styles.timestamp}>{formatTimestamp(item.timestamp)}</Text>
+          <Text style={styles.timestamp}>{formatTimestamp(new Date(item.timestamp))}</Text>
         </View>
         
         <View style={styles.lastMessageContainer}>
@@ -136,26 +153,54 @@ export default function ChatsScreen() {
           },
           headerTintColor: '#fff',
           headerRight: () => (
-            <TouchableOpacity 
-              style={styles.headerButton}
-              onPress={() => {
-                router.push("/(app)/new-chat" as any);
-              }}
-            >
-              <Ionicons name="create-outline" size={24} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => {
+                  console.log('Force loading default chats...');
+                  // Force reload chats
+                  loadChats();
+                }}
+              >
+                <Ionicons name="refresh" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => {
+                  router.push("/(app)/new-chat" as any);
+                }}
+              >
+                <Ionicons name="create-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           ),
         }} 
       />
       
-      <FlatList
-        data={chatListItems}
-        renderItem={renderChatItem}
-        keyExtractor={item => item.id}
-        style={styles.chatList}
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-      />
+      {chatListItems.length === 0 && !loading ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No chats yet</Text>
+          <TouchableOpacity 
+            style={styles.createChatButton}
+            onPress={() => {
+              console.log('Creating default chats...');
+              // Force reload to trigger fallback
+              loadChats();
+            }}
+          >
+            <Text style={styles.createChatButtonText}>Load Demo Chats</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={chatListItems}
+          renderItem={renderChatItem}
+          keyExtractor={item => item.id}
+          style={styles.chatList}
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
@@ -167,6 +212,10 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     marginRight: 15,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   chatList: {
     flex: 1,
@@ -230,6 +279,29 @@ const styles = StyleSheet.create({
   unreadCount: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  createChatButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  createChatButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

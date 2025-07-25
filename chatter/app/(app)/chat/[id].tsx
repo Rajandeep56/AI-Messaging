@@ -16,220 +16,29 @@ import {
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/Colors';
-import ChatManager from '@/utils/chatManager';
-
-// Mock data for chats
-const mockChats = {
-  "1": {
-    id: '1',
-    name: 'John Doe',
-    avatar: 'https://i.pravatar.cc/150?img=1',
-    online: true,
-    messages: [
-      {
-        id: '1',
-        text: 'Hey, how are you?',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-        sent: false,
-        read: false,
-      },
-      {
-        id: '2',
-        text: 'I\'m good, thanks! How about you?',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 23), // 23 hours ago
-        sent: true,
-        read: true,
-      },
-      {
-        id: '3',
-        text: 'Pretty good! Working on that new project.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 22), // 22 hours ago
-        sent: false,
-        read: false,
-      },
-    ],
-  },
-  "2": {
-    id: '2',
-    name: 'Alice Smith',
-    avatar: 'https://i.pravatar.cc/150?img=2',
-    online: true,
-    messages: [
-      {
-        id: '1',
-        text: 'Did you see the new project requirements?',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-        sent: false,
-        read: false,
-      },
-      {
-        id: '2',
-        text: 'Yes, I\'m reviewing them now',
-        timestamp: new Date(Date.now() - 1000 * 60 * 25), // 25 mins ago
-        sent: true,
-        read: true,
-      },
-      {
-        id: '3',
-        text: 'Let me know if you have any questions',
-        timestamp: new Date(Date.now() - 1000 * 60 * 20), // 20 mins ago
-        sent: false,
-        read: false,
-      },
-    ],
-  },
-  "3": {
-    id: '3',
-    name: 'Team Chat',
-    avatar: 'https://i.pravatar.cc/150?img=3',
-    online: false,
-    messages: [
-      {
-        id: '1',
-        text: 'Team meeting at 3 PM',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-        sent: false,
-        read: false,
-      },
-      {
-        id: '2',
-        text: 'I\'ll be there',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1), // 1 hour ago
-        sent: true,
-        read: true,
-      },
-    ],
-  },
-  "4": {
-    id: '4',
-    name: 'Sarah Wilson',
-    avatar: 'https://i.pravatar.cc/150?img=4',
-    online: true,
-    messages: [
-      {
-        id: '1',
-        text: 'Thanks for your help!',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-        sent: false,
-        read: false,
-      },
-      {
-        id: '2',
-        text: 'You\'re welcome! Let me know if you need anything else.',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 23), // 23 hours ago
-        sent: true,
-        read: true,
-      },
-    ],
-  },
-  "5": {
-    id: '5',
-    name: 'David Brown',
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    online: false,
-    messages: [
-      {
-        id: '1',
-        text: 'See you at the conference!',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-        sent: false,
-        read: false,
-      },
-      {
-        id: '2',
-        text: 'Looking forward to it!',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-        sent: true,
-        read: true,
-      },
-    ],
-  },
-};
+import chatService from '@/services/chatService';
+import authService from '@/services/authService';
 
 interface Message {
   id: string;
   text: string;
-  timestamp: string;
+  timestamp: Date;
   sent: boolean;
   read: boolean;
+  senderId?: string;
+  senderName?: string;
+  isAI?: boolean;
 }
 
-interface Chat {
+interface ChatInfo {
   id: string;
   name: string;
   avatar: string;
   online: boolean;
-  messages: Message[];
 }
 
-// Response suggestions based on context
-const getResponseSuggestions = (lastMessage: string, chatName: string): string[] => {
-  const lowerMessage = lastMessage.toLowerCase();
-  
-  // Greeting responses
-  if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-    return [
-      `Hi ${chatName}! 👋`,
-      'Hello! How are you?',
-      'Hey there! 😊',
-      'Hi! Nice to hear from you'
-    ];
-  }
-  
-  // Question responses
-  if (lowerMessage.includes('how are you') || lowerMessage.includes('how\'s it going')) {
-    return [
-      'I\'m doing great, thanks! How about you?',
-      'Pretty good! 😊',
-      'All good here!',
-      'Doing well, thanks for asking!'
-    ];
-  }
-  
-  // Work/Project related
-  if (lowerMessage.includes('project') || lowerMessage.includes('work') || lowerMessage.includes('meeting')) {
-    return [
-      'Sounds good! 👍',
-      'I\'ll look into it',
-      'Thanks for the update',
-      'Got it, will do!'
-    ];
-  }
-  
-  // Thank you responses
-  if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-    return [
-      'You\'re welcome! 😊',
-      'Anytime!',
-      'Happy to help!',
-      'No problem at all!'
-    ];
-  }
-  
-  // General responses
-  if (lowerMessage.includes('okay') || lowerMessage.includes('ok') || lowerMessage.includes('sure')) {
-    return [
-      'Perfect! 👍',
-      'Great!',
-      'Sounds good!',
-      'Awesome! 😊'
-    ];
-  }
-  
-  // Default suggestions
-  return [
-    'Got it! 👍',
-    'Thanks for letting me know',
-    'I\'ll get back to you soon',
-    'Sounds good!',
-    'Perfect, thanks!',
-    'Sure thing! 😊'
-  ];
-};
-
-function formatMessageTime(timestamp: string) {
-  const date = new Date(timestamp);
-  return date.toLocaleTimeString('en-US', {
+function formatMessageTime(timestamp: Date) {
+  return timestamp.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
@@ -240,50 +49,108 @@ export default function ChatScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [message, setMessage] = useState('');
-  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [authStatus, setAuthStatus] = useState<string>('Checking...');
   const flatListRef = useRef<FlatList>(null);
-  const chatManager = ChatManager.getInstance();
 
   useEffect(() => {
     loadChat();
+    checkAuthStatus();
   }, [id]);
 
-  const loadChat = async () => {
+  const checkAuthStatus = async () => {
     try {
-      const loadedChat = await chatManager.getChat(id as string);
-      setCurrentChat(loadedChat);
-      
-      // Mark all received messages as read when chat is opened
-      if (loadedChat) {
-        const unreadMessages = loadedChat.messages.filter(msg => !msg.sent && !msg.read);
-        for (const msg of unreadMessages) {
-          await chatManager.markMessageAsRead(loadedChat.id, msg.id);
-        }
+      const isAuth = authService.isAuthenticated();
+      if (isAuth) {
+        setAuthStatus('Authenticated');
+      } else {
+        setAuthStatus('Not authenticated - trying demo user...');
+        await authService.ensureDemoUser();
+        const retryAuth = authService.isAuthenticated();
         
-        // Show suggestions if there are any unread messages from the other person
-        const hasUnreadMessages = loadedChat.messages.some(msg => !msg.sent && !msg.read);
-        const lastMessage = loadedChat.messages[loadedChat.messages.length - 1];
-        const hasReceivedMessages = loadedChat.messages.some(msg => !msg.sent);
-        
-        // Show suggestions if:
-        // 1. There are unread messages from others, OR
-        // 2. The last message is from the other person (even if read), OR
-        // 3. There are any received messages (fallback)
-        if (hasUnreadMessages || (lastMessage && !lastMessage.sent) || hasReceivedMessages) {
-          setShowSuggestions(true);
-          console.log('Showing suggestions for chat:', loadedChat.name);
-          console.log('Last message:', lastMessage?.text, 'sent:', lastMessage?.sent);
-          console.log('Has unread messages:', hasUnreadMessages);
-          console.log('Has received messages:', hasReceivedMessages);
+        if (retryAuth) {
+          setAuthStatus('Authenticated');
         } else {
-          setShowSuggestions(false);
-          console.log('Hiding suggestions for chat:', loadedChat.name);
+          // Force fallback mode if Firebase is not working
+          authService.forceFallbackMode();
+          setAuthStatus('Using fallback mode');
         }
       }
     } catch (error) {
+      setAuthStatus('Authentication error - using fallback');
+      authService.forceFallbackMode();
+    }
+  };
+
+  const loadChat = async () => {
+    try {
+      const chatId = id as string;
+      
+      // For now, we'll use mock chat info since Firebase requires authentication
+      // In a real app, you'd get this from Firebase
+      const mockChatInfo = {
+        id: chatId,
+        name: chatId === '1' ? 'John Doe' : chatId === '2' ? 'Alice Smith' : 'Chat',
+        avatar: `https://i.pravatar.cc/150?img=${chatId}`,
+        online: true
+      };
+      
+      setChatInfo(mockChatInfo);
+
+      // Load conversation history from Firebase
+      try {
+        const conversationHistory = await chatService.getConversationHistory(chatId);
+        setMessages(conversationHistory);
+        
+        // Show suggestions if there are received messages
+        const hasReceivedMessages = conversationHistory.some((msg: Message) => !msg.sent);
+        if (hasReceivedMessages) {
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        console.log('Using mock messages for now');
+        // Fallback to mock messages if Firebase fails
+        setMessages([
+          {
+            id: '1',
+            text: 'Hey, how are you?',
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
+            sent: false,
+            read: false,
+          },
+          {
+            id: '2',
+            text: 'I\'m good, thanks! How about you?',
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 23),
+            sent: true,
+            read: true,
+          },
+        ]);
+      }
+
+      // Listen to real-time message updates
+      try {
+        const unsubscribe = chatService.listenToChat(chatId, (updatedMessages) => {
+          setMessages(updatedMessages);
+          
+          // Show suggestions for new received messages
+          const hasNewReceivedMessages = updatedMessages.some((msg: Message) => !msg.sent);
+          if (hasNewReceivedMessages) {
+            setShowSuggestions(true);
+          }
+        });
+
+        // Cleanup listener on unmount
+        return () => unsubscribe();
+      } catch (error) {
+        console.log('Real-time updates not available');
+      }
+    } catch (error) {
       console.error('Failed to load chat:', error);
+      setChatInfo(null);
     } finally {
       setLoading(false);
     }
@@ -305,124 +172,52 @@ export default function ChatScreen() {
   );
 
   const sendMessage = async () => {
-    if (!message.trim() || !currentChat) return;
+    if (!message.trim() || !chatInfo) return;
     
     try {
-      // Add new message
-      const newMessage = await chatManager.addMessage(currentChat.id, {
-        text: message.trim(),
-        timestamp: new Date().toISOString(),
-        sent: true,
-        read: true,
-      });
+      // Ensure authentication before sending
+      if (!authService.isAuthenticated()) {
+        await authService.ensureDemoUser();
+      }
+      
+      // Send message via Firebase
+      await chatService.sendMessage(chatInfo.id, message.trim());
       
       // Clear input and dismiss keyboard
       setMessage('');
       Keyboard.dismiss();
       setShowSuggestions(false);
-
-      // Reload chat to get updated messages
-      loadChat();
-
-      // Simulate received message after 1-2 seconds
-      if (Math.random() > 0.5) { // 50% chance to get a reply
-        setTimeout(async () => {
-          const replies = [
-            "Got it! 👍",
-            "Thanks for letting me know",
-            "Okay, sounds good!",
-            "I'll get back to you soon",
-            "Perfect, thanks!",
-            "Sure thing! 😊",
-          ];
-          
-          await chatManager.addMessage(currentChat.id, {
-            text: replies[Math.floor(Math.random() * replies.length)],
-            timestamp: new Date().toISOString(),
-            sent: false,
-            read: false,
-          });
-
-          // Reload chat to get the reply
-          loadChat();
-        }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
-      }
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('Failed to send message via Firebase:', error);
+      // Try to re-authenticate and retry
+      try {
+        await authService.ensureDemoUser();
+        await chatService.sendMessage(chatInfo.id, message.trim());
+        setMessage('');
+        Keyboard.dismiss();
+        setShowSuggestions(false);
+      } catch (retryError) {
+        console.error('Retry failed:', retryError);
+      }
     }
   };
 
   const sendSuggestion = async (suggestion: string) => {
-    if (!currentChat) return;
-    
-    try {
-      await chatManager.addMessage(currentChat.id, {
-        text: suggestion,
-        timestamp: new Date().toISOString(),
-        sent: true,
-        read: true,
-      });
-      
-      setShowSuggestions(false);
-      loadChat();
-
-      // Simulate received message after 1-2 seconds
-      if (Math.random() > 0.5) {
-        setTimeout(async () => {
-          const replies = [
-            "Got it! 👍",
-            "Thanks for letting me know",
-            "Okay, sounds good!",
-            "I'll get back to you soon",
-            "Perfect, thanks!",
-            "Sure thing! 😊",
-          ];
-          
-          await chatManager.addMessage(currentChat.id, {
-            text: replies[Math.floor(Math.random() * replies.length)],
-            timestamp: new Date().toISOString(),
-            sent: false,
-            read: false,
-          });
-
-          loadChat();
-        }, 1000 + Math.random() * 1000);
-      }
-    } catch (error) {
-      console.error('Failed to send suggestion:', error);
-    }
+    setMessage(suggestion);
+    await sendMessage();
   };
 
   const renderSuggestions = () => {
-    console.log('renderSuggestions called:', { showSuggestions, currentChat: !!currentChat, messagesLength: currentChat?.messages?.length });
-    
-    if (!showSuggestions || !currentChat || currentChat.messages.length === 0) {
-      console.log('Early return from renderSuggestions');
+    if (!showSuggestions || !chatInfo || messages.length === 0) {
       return null;
     }
 
-    const lastMessage = currentChat.messages[currentChat.messages.length - 1];
-    console.log('Last message in renderSuggestions:', lastMessage?.text, 'sent:', lastMessage?.sent);
-    
-    // For debugging: show suggestions even if last message is from user
-    if (lastMessage.sent && !showSuggestions) {
-      console.log('Last message is sent by user, but suggestions are forced to show');
-    }
-    
-    if (lastMessage.sent && !showSuggestions) {
-      console.log('Last message is sent by user, hiding suggestions');
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.sent) {
       return null;
     }
 
-    // Use ChatManager's improved suggestion system
-    const suggestions = chatManager.getResponseSuggestions(currentChat.id, currentChat.name);
-    const context = chatManager.getConversationContext(currentChat.id);
-    
-    console.log('Generated suggestions:', suggestions);
-    console.log('Context:', context);
-    
-    // Fallback suggestions if none are generated
-    const finalSuggestions = suggestions.length > 0 ? suggestions : [
+    const suggestions = [
       'Got it! 👍',
       'Thanks for letting me know',
       'I\'ll get back to you soon',
@@ -433,32 +228,22 @@ export default function ChatScreen() {
       <View style={styles.suggestionsContainer}>
         <View style={styles.suggestionsHeader}>
           <Text style={styles.suggestionsTitle}>Quick replies</Text>
-          <View style={styles.suggestionsActions}>
-            <View style={styles.toneIndicator}>
-              <Text style={styles.toneText}>{context.conversationTone}</Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.dismissButton}
-              onPress={() => setShowSuggestions(false)}
-            >
-              <Ionicons name="close" size={16} color="#666" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.dismissButton}
+            onPress={() => setShowSuggestions(false)}
+          >
+            <Ionicons name="close" size={16} color="#666" />
+          </TouchableOpacity>
         </View>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.suggestionsScroll}
         >
-          {finalSuggestions.map((suggestion, index) => (
+          {suggestions.map((suggestion, index) => (
             <TouchableOpacity
               key={index}
-              style={[
-                styles.suggestionButton,
-                context.conversationTone === 'professional' && styles.professionalSuggestion,
-                context.conversationTone === 'friendly' && styles.friendlySuggestion,
-                context.conversationTone === 'formal' && styles.formalSuggestion,
-              ]}
+              style={styles.suggestionButton}
               onPress={() => sendSuggestion(suggestion)}
             >
               <Text style={styles.suggestionText}>{suggestion}</Text>
@@ -477,7 +262,7 @@ export default function ChatScreen() {
     );
   }
 
-  if (!currentChat) {
+  if (!chatInfo) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <Text>Chat not found</Text>
@@ -491,6 +276,21 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
+      {/* Authentication Status Indicator */}
+      {authStatus !== 'Authenticated' && (
+        <View style={styles.authStatusContainer}>
+          <Text style={styles.authStatusText}>{authStatus}</Text>
+          <TouchableOpacity 
+            style={styles.forceFallbackButton}
+            onPress={() => {
+              authService.forceFallbackMode();
+              setAuthStatus('Using fallback mode');
+            }}
+          >
+            <Text style={styles.forceFallbackText}>Force Fallback Mode</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <Stack.Screen
         options={{
           headerStyle: {
@@ -499,13 +299,13 @@ export default function ChatScreen() {
           headerTintColor: '#fff',
           headerLeft: () => (
             <TouchableOpacity 
-              onPress={() => router.back()}
+              onPress={() => router.push('/(tabs)/chats')}
               style={styles.headerButton}
             >
               <Ionicons name="chevron-back" size={24} color="#fff" />
             </TouchableOpacity>
           ),
-          title: currentChat?.name,
+          title: chatInfo?.name,
           headerTitleStyle: styles.headerTitle,
           headerRight: () => (
             <View style={styles.headerRight}>
@@ -541,7 +341,7 @@ export default function ChatScreen() {
 
       <FlatList
         ref={flatListRef}
-        data={currentChat?.messages || []}
+        data={messages}
         renderItem={renderMessage}
         keyExtractor={item => item.id}
         style={styles.messageList}
@@ -765,4 +565,29 @@ const styles = StyleSheet.create({
   sendButton: {
     padding: 4,
   },
-}); 
+  authStatusContainer: {
+    backgroundColor: '#FFF3CD',
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFEAA7',
+  },
+  authStatusText: {
+    fontSize: 12,
+    color: '#856404',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  forceFallbackButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  forceFallbackText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+});
