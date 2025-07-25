@@ -24,12 +24,37 @@ jobs:
     - name: Install Firebase CLI
       run: npm install -g firebase-tools
       
+    - name: Setup EAS (Skip if token issues)
+      run: |
+        cd chatter
+        # Try to login with EXPO_TOKEN, but don't fail if it doesn't work
+        if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+          echo "Attempting EAS login with token..."
+          echo ${{ secrets.EXPO_TOKEN }} | eas login || echo "EAS login failed, continuing without it"
+        else
+          echo "No EXPO_TOKEN found, skipping EAS login"
+        fi
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      
     - name: Download Existing Build
       run: |
         cd chatter
         # Download the existing finished AAB build (saves 1 hour!)
         curl -L -o app-release.aab "https://expo.dev/artifacts/eas/tda4pib5cJeEoAv4PG6JgX.aab"
         echo "✅ Downloaded existing build - no waiting for new build!"
+        
+        # Also try to get the latest APK build as backup
+        if command -v eas &> /dev/null; then
+          echo "Getting latest APK build as backup..."
+          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl') || echo "Could not get APK build URL"
+          if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ]; then
+            curl -L -o app-release.apk "$BUILD_URL"
+            echo "✅ Downloaded APK backup"
+          fi
+        else
+          echo "EAS CLI not available, using AAB only"
+        fi
         
     - name: Setup Firebase
       run: |
@@ -48,21 +73,23 @@ jobs:
         # First, ensure testers are added
         firebase appdistribution:testers:add kaurdeep9073@gmail.com || echo "Tester already exists"
         
-        # Deploy using the method that worked - APK to individual testers
-        # Convert AAB to APK or use existing APK
+        # Try to deploy APK first (this method worked)
         if [ -f "app-release.apk" ]; then
-          echo "Using existing APK file..."
+          echo "Deploying APK file..."
+          firebase appdistribution:distribute app-release.apk \
+            --app 1:965784009156:android:de800004fd88a35b410c91 \
+            --testers kaurdeep9073@gmail.com \
+            --release-notes "Chatter App v1.0.0 - Quick Deploy from GitHub Actions"
+        elif [ -f "app-release.aab" ]; then
+          echo "Deploying AAB file..."
+          firebase appdistribution:distribute app-release.aab \
+            --app 1:965784009156:android:de800004fd88a35b410c91 \
+            --testers kaurdeep9073@gmail.com \
+            --release-notes "Chatter App v1.0.0 - Quick Deploy from GitHub Actions"
         else
-          echo "Converting AAB to APK or downloading latest APK..."
-          # Try to get the latest APK build
-          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
-          curl -L -o app-release.apk "$BUILD_URL"
+          echo "❌ No build files found!"
+          exit 1
         fi
-        
-        firebase appdistribution:distribute app-release.apk \
-          --app 1:965784009156:android:de800004fd88a35b410c91 \
-          --testers kaurdeep9073@gmail.com \
-          --release-notes "Chatter App v1.0.0 - Quick Deploy from GitHub Actions"
       env:
         FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
         

@@ -36,14 +36,15 @@ jobs:
     - name: Install Firebase CLI
       run: npm install -g firebase-tools
       
-    - name: Login to Expo
+    - name: Setup EAS (Optional)
       run: |
+        cd chatter
+        # Try to login with EXPO_TOKEN, but don't fail if it doesn't work
         if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
-          echo "Using EXPO_TOKEN for authentication"
-          echo ${{ secrets.EXPO_TOKEN }} | eas login
+          echo "Attempting EAS login with token..."
+          echo ${{ secrets.EXPO_TOKEN }} | eas login || echo "EAS login failed, continuing without it"
         else
-          echo "EXPO_TOKEN not set, please add it to GitHub secrets"
-          exit 1
+          echo "No EXPO_TOKEN found, skipping EAS login"
         fi
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
