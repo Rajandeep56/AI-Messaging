@@ -21,15 +21,18 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Install Firebase CLI
-      run: npm install -g firebase-tools
+    - name: Install Firebase CLI and EAS CLI
+      run: |
+        npm install -g firebase-tools
+        npm install -g eas-cli
       
     - name: Deploy APK to Firebase App Distribution
       run: |
         cd chatter
-        ./deploy-simple-apk.sh
+        ./deploy-with-eas-apk.sh
       env:
         FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
     - name: Deploy Web Version
       run: |
