@@ -23,22 +23,20 @@ echo ""
 
 # Generate new token
 echo "🔧 Generating new Expo token..."
-TOKEN=$(eas token:create --scope project --project-id ai-msging --non-interactive)
-
-if [ $? -eq 0 ]; then
+echo ""
+echo "📝 Please go to: https://expo.dev/accounts/rajandeep56/settings/access-tokens"
+echo "   Click 'Create token' and copy the token value."
+echo ""
+echo "🔐 Then add it to your GitHub repository secrets:"
+echo "   Repository Settings → Secrets and variables → Actions → New repository secret"
+echo "   Name: EXPO_TOKEN"
+echo "   Value: [paste your token here]"
+echo ""
+echo "⚠️  Keep your token secure and don't share it publicly!"
+echo ""
+echo "💡 Alternative: You can also run 'eas login' in GitHub Actions without a token"
+echo "   by removing the EXPO_TOKEN environment variable from the workflow."
     echo ""
-    echo "✅ New Expo token generated successfully!"
+    echo "✅ Instructions completed!"
     echo ""
-    echo "🔐 Copy this token and add it to your GitHub repository secrets:"
-    echo "   Repository Settings → Secrets and variables → Actions → New repository secret"
-    echo "   Name: EXPO_TOKEN"
-    echo "   Value: $TOKEN"
-    echo ""
-    echo "📋 Token (copy this):"
-    echo "$TOKEN"
-    echo ""
-    echo "⚠️  Keep this token secure and don't share it publicly!"
-else
-    echo "❌ Failed to generate token. Please try again."
-    exit 1
-fi 
+    echo "🚀 After adding the token to GitHub secrets, your deployment should work!" 
