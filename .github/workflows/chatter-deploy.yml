@@ -38,7 +38,13 @@ jobs:
       
     - name: Login to Expo
       run: |
-        echo ${{ secrets.EXPO_TOKEN }} | eas login
+        if [ -n "${{ secrets.EXPO_TOKEN }}" ]; then
+          echo "Using EXPO_TOKEN for authentication"
+          echo ${{ secrets.EXPO_TOKEN }} | eas login
+        else
+          echo "EXPO_TOKEN not set, please add it to GitHub secrets"
+          exit 1
+        fi
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
