@@ -96,4 +96,6 @@ jobs:
         echo "- deploy-manual.sh (Deployment script)"
         echo ""
         echo "🚀 Manual deployment command:"
-        echo "firebase appdistribution:distribute app-release.apk --app 1:965784009156:android:de800004fd88a35b410c91 --testers kaurdeep9073@gmail.com --release-notes 'Chatter App v1.0.0 - Manual Deploy'" 
+        echo "firebase appdistribution:distribute app-release.apk --app 1:965784009156:android:de800004fd88a35b410c91 --testers kaurdeep9073@gmail.com --release-notes 'Chatter App v1.0.0 - Manual Deploy'"
+        echo ""
+        echo "📱 APP ONLY - No web deployment" 
