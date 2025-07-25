@@ -60,7 +60,8 @@ jobs:
         
         # Setup Firebase
         echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > firebase-service-account.json
-        firebase auth:ci-token --project ai-msging --token-file firebase-token.json
+        export GOOGLE_APPLICATION_CREDENTIALS="firebase-service-account.json"
+        firebase use ai-msging
         
         # Deploy to Firebase App Distribution using the working method
         # First, ensure testers are added
@@ -75,8 +76,7 @@ jobs:
         firebase appdistribution:distribute app-release.apk \
           --app 1:965784009156:android:de800004fd88a35b410c91 \
           --testers kaurdeep9073@gmail.com \
-          --release-notes "Chatter App v1.0.0 - Auto-deployed from GitHub Actions" \
-          --token-file firebase-token.json
+          --release-notes "Chatter App v1.0.0 - Auto-deployed from GitHub Actions"
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
@@ -85,7 +85,7 @@ jobs:
       run: |
         cd chatter
         npm run build:web
-        firebase deploy --only hosting --token-file firebase-token.json
+        firebase deploy --only hosting
         
     - name: Success Message
       run: |
