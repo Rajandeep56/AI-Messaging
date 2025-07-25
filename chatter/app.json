@@ -38,10 +38,13 @@
         "expo-build-properties",
         {
           "android": {
-            "googleServicesFile": "./google-services.json"
+            "googleServicesFile": "./google-services.json",
+            "newArchEnabled": false
           },
           "ios": {
-            "googleServicesFile": "./GoogleService-Info.plist"
+            "googleServicesFile": "./GoogleService-Info.plist",
+            "newArchEnabled": false,
+            "useFrameworks": "static"
           }
         }
       ]

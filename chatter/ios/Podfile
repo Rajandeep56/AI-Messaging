@@ -38,7 +38,10 @@ target 'chatter' do
   use_modular_headers!
   
   # Fix for React Native 0.79.3 module conflicts
-  # Removed conflicting pod specifications
+  # Disable new architecture temporarily
+  ENV['RCT_NEW_ARCH_ENABLED'] = '0'
+  ENV['USE_HERMES'] = '0'
+  ENV['RCT_NEW_ARCH_ENABLED'] = '0'
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -74,6 +77,19 @@ target 'chatter' do
         config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
         config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
         config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'RCT_NEW_ARCH_ENABLED=0'
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'USE_HERMES=0'
+        
+        # Fix module conflicts
+        if target.name.include?('React-Runtime') || target.name.include?('React-jsitooling')
+          config.build_settings['DEFINES_MODULE'] = 'NO'
+          config.build_settings['CLANG_ENABLE_MODULES'] = 'NO'
+        end
+        
+        # Fix safe-area-context new architecture issue
+        if target.name.include?('react-native-safe-area-context')
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'RCT_NEW_ARCH_ENABLED=0'
+        end
       end
     end
   end

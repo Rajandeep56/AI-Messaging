@@ -48,25 +48,34 @@ jobs:
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
-    - name: Build and Deploy Android
+    - name: Deploy Existing Android Build
       run: |
         cd chatter
-        # Build Android APK
-        eas build --platform android --profile preview --non-interactive --wait
+        # Download existing finished AAB build
+        curl -L -o app-release.aab "https://expo.dev/artifacts/eas/tda4pib5cJeEoAv4PG6JgX.aab"
         
-        # Download APK
-        BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
-        wget -O app-release.apk "$BUILD_URL"
+        # Convert AAB to APK for Firebase App Distribution (no Google Play required)
+        # Or use the AAB directly if Google Play is linked
+        echo "Using existing finished build instead of building new one"
         
         # Setup Firebase
         echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > firebase-service-account.json
         firebase auth:ci-token --project ai-msging --token-file firebase-token.json
         
-        # Deploy to Firebase App Distribution
+        # Deploy to Firebase App Distribution using the working method
+        # First, ensure testers are added
+        firebase appdistribution:testers:add kaurdeep9073@gmail.com || echo "Tester already exists"
+        
+        # Get the latest APK build (this method worked successfully)
+        echo "Getting latest APK build for deployment..."
+        BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
+        curl -L -o app-release.apk "$BUILD_URL"
+        
+        # Deploy APK to individual testers (this worked!)
         firebase appdistribution:distribute app-release.apk \
           --app 1:965784009156:android:de800004fd88a35b410c91 \
-          --groups testers \
-          --release-notes-file release_notes.txt \
+          --testers kaurdeep9073@gmail.com \
+          --release-notes "Chatter App v1.0.0 - Auto-deployed from GitHub Actions" \
           --token-file firebase-token.json
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

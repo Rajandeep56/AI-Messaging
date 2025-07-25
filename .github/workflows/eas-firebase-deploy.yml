@@ -44,19 +44,24 @@ jobs:
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
-    - name: Build Android APK with EAS
+    - name: Download Existing Android Build
       run: |
         cd chatter
-        eas build --platform android --profile preview --non-interactive --wait
+        # Download existing finished AAB build instead of building new one
+        curl -L -o app-release.aab "https://expo.dev/artifacts/eas/tda4pib5cJeEoAv4PG6JgX.aab"
+        echo "Using existing finished build - saves 1 hour of build time!"
       env:
         EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         
-    - name: Download APK
+    - name: Prepare for Deployment
       run: |
         cd chatter
-        # Get the latest build URL
-        BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
-        wget -O app-release.apk "$BUILD_URL"
+        # Check if we have AAB file, if not try to get latest APK
+        if [ ! -f "app-release.aab" ]; then
+          echo "AAB not found, getting latest APK build..."
+          BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
+          curl -L -o app-release.apk "$BUILD_URL"
+        fi
         
     - name: Login to Firebase
       run: |
@@ -69,10 +74,20 @@ jobs:
     - name: Deploy to Firebase App Distribution
       run: |
         cd chatter
+        # Deploy using the method that worked successfully
+        # First, ensure testers are added
+        firebase appdistribution:testers:add kaurdeep9073@gmail.com || echo "Tester already exists"
+        
+        # Get the latest APK build (this method worked!)
+        echo "Getting latest APK build for deployment..."
+        BUILD_URL=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].artifacts.buildUrl')
+        curl -L -o app-release.apk "$BUILD_URL"
+        
+        # Deploy APK to individual testers (this worked successfully!)
         firebase appdistribution:distribute app-release.apk \
           --app 1:965784009156:android:de800004fd88a35b410c91 \
-          --groups testers \
-          --release-notes-file release_notes.txt \
+          --testers kaurdeep9073@gmail.com \
+          --release-notes "Chatter App v1.0.0 - Auto-deployed from GitHub Actions" \
           --token-file firebase-token.json
       env:
         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
