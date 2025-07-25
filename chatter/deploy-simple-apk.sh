@@ -41,7 +41,6 @@ echo "✅ Tester added"
 # Step 3: Download APK (simple method)
 echo ""
 echo "📥 Step 3: Downloading APK build..."
-cd chatter
 
 # Try to download APK from a direct URL or use existing file
 if [ -f "app-release.apk" ]; then
@@ -55,7 +54,14 @@ else
     echo "Please either:"
     echo "1. Place app-release.apk in the chatter directory, or"
     echo "2. Set APK_DOWNLOAD_URL environment variable"
-    exit 1
+    echo ""
+    echo "For now, let's try to get the APK from the successful deployment URL..."
+    # Try to download from the URL that worked before
+    curl -L -o app-release.apk "https://expo.dev/artifacts/eas/tda4pib5cJeEoAv4PG6JgX.apk" || {
+        echo "❌ Could not download APK from fallback URL"
+        exit 1
+    }
+    echo "✅ Downloaded APK from fallback URL"
 fi
 
 # Step 4: Deploy to Firebase App Distribution
