@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Working Deployment Method - Using Exact Success Method"
+echo "🚀 Simple APK Deployment - No EAS Complications"
 echo ""
 
 # Step 1: Setup Firebase service account
@@ -29,7 +29,6 @@ if [ $? -eq 0 ]; then
 else
     echo "❌ Firebase authentication failed"
     echo "Please check your FIREBASE_SERVICE_ACCOUNT_KEY secret"
-    echo "The service account JSON should be valid and have proper permissions"
     exit 1
 fi
 
@@ -39,44 +38,38 @@ echo "👥 Step 2: Adding tester..."
 firebase appdistribution:testers:add kaurdeep9073@gmail.com || echo "Tester already exists"
 echo "✅ Tester added"
 
-# Step 3: Get latest APK build (this is the method that worked!)
+# Step 3: Download APK (simple method)
 echo ""
-echo "📥 Step 3: Getting latest APK build..."
-if command -v eas &> /dev/null && [ -n "$EXPO_TOKEN" ]; then
-    echo "Attempting EAS login..."
-    echo "$EXPO_TOKEN" | eas login > /dev/null 2>&1 || echo "EAS login failed, but continuing..."
-    
-    echo "Getting latest APK build URL..."
-    BUILD_URL=$(eas build:list --platform android --limit 1 --json 2>/dev/null | jq -r '.[0].artifacts.buildUrl' 2>/dev/null)
-    
-    if [ "$BUILD_URL" != "null" ] && [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "" ]; then
-        curl -L -o app-release.apk "$BUILD_URL"
-        echo "✅ Downloaded APK build from EAS"
-    else
-        echo "Could not get APK from EAS, using fallback method..."
-        # Fallback: Use a direct download or show instructions
-        echo "Please ensure you have a recent APK build available"
-        echo "You can manually download the APK and place it in the chatter directory"
-        exit 1
-    fi
+echo "📥 Step 3: Downloading APK build..."
+cd chatter
+
+# Try to download APK from a direct URL or use existing file
+if [ -f "app-release.apk" ]; then
+    echo "✅ Using existing APK file"
+elif [ -n "$APK_DOWNLOAD_URL" ]; then
+    echo "Downloading APK from provided URL..."
+    curl -L -o app-release.apk "$APK_DOWNLOAD_URL"
+    echo "✅ Downloaded APK from URL"
 else
-    echo "EAS CLI not available or no EXPO_TOKEN"
-    echo "Please ensure EXPO_TOKEN secret is set in GitHub"
+    echo "❌ No APK file found and no download URL provided"
+    echo "Please either:"
+    echo "1. Place app-release.apk in the chatter directory, or"
+    echo "2. Set APK_DOWNLOAD_URL environment variable"
     exit 1
 fi
 
-# Step 4: Deploy to Firebase App Distribution (this method worked!)
+# Step 4: Deploy to Firebase App Distribution
 echo ""
 echo "🚀 Step 4: Deploying to Firebase App Distribution..."
 firebase appdistribution:distribute app-release.apk \
   --app 1:965784009156:android:de800004fd88a35b410c91 \
   --testers kaurdeep9073@gmail.com \
-  --release-notes "Chatter App v1.0.0 - Working Method Deploy"
+  --release-notes "Chatter App v1.0.0 - Simple APK Deploy"
 
 if [ $? -eq 0 ]; then
     echo ""
     echo "🎉 SUCCESS! Your App is Deployed!"
-    echo "Perfect! Your Chatter app has been successfully deployed to Firebase App Distribution for free, without using Google Play Store!"
+    echo "Perfect! Your Chatter app has been successfully deployed to Firebase App Distribution for free!"
     echo ""
     echo "✅ Deployment Complete:"
     echo "✅ APK Uploaded: Successfully uploaded to Firebase"
