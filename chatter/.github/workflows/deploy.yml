@@ -7,9 +7,41 @@ on:
     branches: [ main, master ]
 
 jobs:
+  # Validate the application
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Debug directory structure
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        echo "Package.json contents:"
+        cat package.json | head -20
+      
+    - name: Run type check
+      run: npm run type-check
+      
+    - name: Validate build
+      run: npm run build:web
+
   # Deploy to Vercel (Free hosting)
   deploy-vercel:
     runs-on: ubuntu-latest
+    needs: validate
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
     steps:
@@ -26,7 +58,7 @@ jobs:
       run: npm ci
       
     - name: Build for web
-      run: npm run web
+      run: npm run build:web
       
     - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
@@ -39,6 +71,7 @@ jobs:
   # Deploy to Netlify (Free hosting)
   deploy-netlify:
     runs-on: ubuntu-latest
+    needs: validate
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
     steps:
@@ -55,7 +88,7 @@ jobs:
       run: npm ci
       
     - name: Build for web
-      run: npm run web
+      run: npm run build:web
       
     - name: Deploy to Netlify
       uses: nwtgck/actions-netlify@v2.0
@@ -71,6 +104,7 @@ jobs:
   # Deploy to GitHub Pages (Free hosting)
   deploy-github-pages:
     runs-on: ubuntu-latest
+    needs: validate
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
     steps:
@@ -87,7 +121,7 @@ jobs:
       run: npm ci
       
     - name: Build for web
-      run: npm run web
+      run: npm run build:web
       
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -99,6 +133,7 @@ jobs:
   # Build for mobile platforms
   build-mobile:
     runs-on: ubuntu-latest
+    needs: validate
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
     steps:
