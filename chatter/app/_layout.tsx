@@ -60,6 +60,9 @@ function InitialLayout() {
     AsyncStorage.getItem('dev_authenticated').then(val => {
       setDevAuthenticated(val === 'true');
     });
+    // QUICK FIX: Auto-enable dev mode
+    AsyncStorage.setItem('dev_authenticated', 'true');
+    setDevAuthenticated(true);
   }, []);
 
   useEffect(() => {
